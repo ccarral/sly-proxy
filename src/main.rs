@@ -1,6 +1,10 @@
+mod dispatch;
+mod error;
+mod listener;
 mod proxy;
 use proxy::TcpProxy;
 use std::error::Error;
+use std::io;
 use tokio::net::TcpListener;
 use tokio::runtime::Builder;
 use tower::Service;
@@ -17,10 +21,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let runtime = Builder::new_current_thread().enable_all().build()?;
 
     runtime.block_on(async {
-        let source_addr = "127.0.0.1:8080";
+        let source_addr = "127.0.0.1:11";
 
         tracing::info!("Binding to {:?}", &source_addr);
-        let source = TcpListener::bind(source_addr).await.unwrap();
+        let source = TcpListener::bind(source_addr).await?;
 
         let destination = "127.0.0.1:8081".parse().unwrap();
 
@@ -28,14 +32,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             Ok((stream, addr)) => {
                 tracing::info!("Connected to {:?}", addr);
                 let mut proxy_service = TcpProxy::new(destination);
-                proxy_service.call(stream).await;
+                proxy_service.call(stream).await?;
             }
             Err(e) => {
                 tracing::error!("Encountered error while accepting socket: {}", e);
             }
         }
         // match source.accept().await =>{};
-    });
+        Ok::<(), io::Error>(())
+    })?;
 
     Ok(())
 }

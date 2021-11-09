@@ -3,12 +3,11 @@ use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::Poll;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpSocket;
 use tokio::net::TcpStream;
-use tracing;
-//
 use tower::Service;
+use tracing;
 
 pub struct TcpProxy {
     target_addr: SocketAddr,

@@ -48,8 +48,6 @@ struct ListenerService {
 }
 
 impl ListenerService {
-    const CHANNEL_BUFFER: usize = 10;
-
     /// Spawn a task that listens on a port and blocks until an `.accept()` is received and sends
     /// the TcpStream through a channel
     fn listener_builder_inner(
@@ -57,9 +55,11 @@ impl ListenerService {
         tx: mpsc::Sender<(TcpStream, SocketAddr)>,
     ) -> JoinHandle<Result<(), FlyError<(TcpStream, SocketAddr)>>> {
         tokio::spawn(async move {
+            tracing::info!("Binding on {:?}", &addr);
             let listener = TcpListener::bind(addr).await?;
             match listener.accept().await {
                 Ok((stream, addr)) => {
+                    tracing::info!("Connection accepted from {:?}", &addr);
                     tx.send((stream, addr)).await?;
                     Ok(())
                 }
@@ -70,6 +70,7 @@ impl ListenerService {
         })
     }
 
+    /// Returns a future that runs the listener tasks
     pub fn start(
         self,
     ) -> futures::future::JoinAll<
