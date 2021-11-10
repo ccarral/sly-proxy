@@ -5,8 +5,10 @@ mod proxy;
 use proxy::TcpProxy;
 use std::error::Error;
 use std::io;
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::runtime::Builder;
+use tokio::sync::mpsc;
 use tower::Service;
 use tracing_subscriber::EnvFilter;
 
@@ -20,27 +22,42 @@ fn main() -> Result<(), Box<dyn Error>> {
     tracing::info!("Initializing runtime");
     let runtime = Builder::new_current_thread().enable_all().build()?;
 
-    runtime.block_on(async {
-        let source_addr = "127.0.0.1:11";
+    let (tx, rx) = mpsc::channel(10);
 
-        tracing::info!("Binding to {:?}", &source_addr);
-        let source = TcpListener::bind(source_addr).await?;
+    // Spawn service that listens on a multitude of ports and sends received streams through the tz
+    // channel
+    let listener_service = listener::ListenerService::new(tx)
+        .on_port(11)
+        .on_port(8081)
+        .start(&runtime);
 
-        let destination = "127.0.0.1:8081".parse().unwrap();
+    let targets: Vec<SocketAddr> = [
+        "127.0.0.1:9000",
+        "127.0.0.1:9001",
+        "127.0.0.1:9002",
+        "127.0.0.1:9003",
+    ]
+    .into_iter()
+    .map(|addr| addr.parse::<SocketAddr>())
+    .collect::<Result<Vec<SocketAddr>, _>>()?;
 
-        match source.accept().await {
-            Ok((stream, addr)) => {
-                tracing::info!("Connected to {:?}", addr);
-                let mut proxy_service = TcpProxy::new(destination);
-                proxy_service.call(stream).await?;
+    let dispatch_service = dispatch::DispatchService::new(rx)
+        .with_targets(targets)
+        .build(&runtime);
+
+    runtime.block_on(async move {
+        // dispatch_service.await?;
+        tokio::select! {
+            res = dispatch_service =>{
+                match res{
+                    Ok(_) => {},
+                    Err(e) => {eprintln!("Unexpected error on dispatcher: {}",e);},
+                }
+            },
+            _ = listener_service =>{
             }
-            Err(e) => {
-                tracing::error!("Encountered error while accepting socket: {}", e);
-            }
-        }
-        // match source.accept().await =>{};
-        Ok::<(), io::Error>(())
-    })?;
+        };
+    });
 
     Ok(())
 }
