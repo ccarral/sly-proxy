@@ -1,7 +1,9 @@
 use crate::error::FlyError;
 use crate::proxy::TcpProxy;
 use futures::pin_mut;
+use futures::{Future, FutureExt};
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
@@ -9,9 +11,13 @@ use tokio::task::JoinHandle;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tower::balance::p2c::Balance;
+use tower::builder::ServiceBuilder;
 use tower::discover::ServiceList;
-use tower::load::{CompleteOnResponse, PendingRequests};
-use tower::util::{CallAllUnordered, ServiceExt};
+use tower::limit::ConcurrencyLimit;
+use tower::load::{CompleteOnResponse, Constant, PendingRequests};
+use tower::util::CallAll;
+use tower::Service;
+use tower::ServiceExt;
 
 /// Creates a task that receives a TcpStream and routes it to a series of targets
 pub struct DispatchService {
@@ -44,31 +50,42 @@ impl DispatchService {
     }
 
     /// Panics if length of service list == 0
-    pub fn build(self, runtime: &Runtime) -> JoinHandle<Result<(), FlyError<TcpStream>>> {
-        tracing::debug!("Building dispatch service");
+    pub async fn run(mut self) -> Result<(), FlyError<TcpStream>> {
         assert!(self.services.len() != 0, "Services list can't be 0");
-        runtime.spawn(async move {
-            // (async move {
-            tracing::debug!("Dispatch service started");
-            let stream_rx = ReceiverStream::new(self.rx);
-            let services_with_load =
-                self.services
-                    .into_iter()
-                    .map(|s| -> PendingRequests<TcpProxy> {
-                        PendingRequests::new(s, CompleteOnResponse::default())
-                    });
+        // async move {
+        tracing::info!("Dispatch service started");
+        // tracing::info!("Streamed rx initialized");
+        // let services_with_load = self.services.into_iter().map(|s| Constant::new(s, 0));
 
-            let service_list = ServiceList::new(services_with_load);
-            let load_balancer = Balance::new(service_list);
+        // let service_list = ServiceList::new(services_with_load);
 
-            // pin_mut!(stream_rx);
-            let responses = load_balancer.call_all(stream_rx).unordered();
-            // let pin = Box::pin(responses);
-            while let Some(resp) = responses.next().await {}
-            // tracing::debug!("Dispatch service ended");
-            Ok(())
+        // let balance = Balance::new(service_list);
+        // let load_balancer = ConcurrencyLimit::new(load_balancer, 1);
+        tracing::info!("Load balancer initialized");
 
-            // }
-        })
+        // let stream_rx = ReceiverStream::new(self.rx);
+        // let mut responses = balance.call_all(stream_rx).unordered();
+        // if let Some(_s) = responses
+        // .next()
+        // .inspect(|f| tracing::info!("Polling responses: {:?}", f))
+        // .await
+        // {
+        // tracing::info!("Packet forwarded");
+        // }
+        while let Some(tcp) = self.rx.recv().await {
+            tracing::info!("Received tcp stream");
+            let mut svc = TcpProxy::new("127.0.0.1:8080".parse().unwrap());
+            svc.ready().await?.call(tcp).await?;
+        }
+        // tracing::info!("Got here");
+
+        // Select from unoccupied services
+
+        // while let Some(_) = responses.next().await {
+        // tracing::debug!("A connection finished");
+        // }
+        tracing::info!("Dispatch service finished");
+
+        Ok(())
     }
 }
