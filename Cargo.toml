@@ -1,5 +1,5 @@
 [package]
-name = "fly-proxy"
+name = "sly-proxy"
 version = "0.1.0"
 edition = "2021"
 
