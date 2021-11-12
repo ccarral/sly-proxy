@@ -47,25 +47,30 @@ impl Service<TcpStream> for TcpProxy {
         self.service_ready = false;
 
         let fut = Box::pin(async move {
-            let server_socket = TcpSocket::new_v4().expect("Couldn't initialize socket");
+            let server_socket = TcpSocket::new_v4()?;
             tracing::info!("Attempting to connect to {:?}", &target_addr);
             // Attempt to connect to socket
-            let mut out_stream = server_socket.connect(target_addr).await.unwrap();
+            let mut out_stream = server_socket.connect(target_addr).await?;
 
             let (mut read_in, mut write_in) = in_stream.split();
             let (mut read_out, mut write_out) = out_stream.split();
 
             let client_to_server = async {
-                tokio::io::copy(&mut read_in, &mut write_out).await.unwrap();
-                write_out.shutdown().await.unwrap();
+                tokio::io::copy(&mut read_in, &mut write_out).await?;
+                write_out.shutdown().await?;
+                Ok::<(), io::Error>(())
             };
 
             let server_to_client = async {
-                tokio::io::copy(&mut read_out, &mut write_in).await.unwrap();
-                write_in.shutdown().await.unwrap();
+                tokio::io::copy(&mut read_out, &mut write_in).await?;
+                write_in.shutdown().await?;
+                Ok::<(), io::Error>(())
             };
 
-            tokio::join!(client_to_server, server_to_client);
+            let (a, b) = tokio::join!(client_to_server, server_to_client);
+
+            a?;
+            b?;
 
             Ok(())
         });
