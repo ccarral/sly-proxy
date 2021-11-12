@@ -12,3 +12,4 @@ tower ={ version="0.4.10", features=["balance", "discover","util","load"] }
 tracing = "0.1.29"
 tracing-subscriber ={  version = "0.3.1", features = ["env-filter"] }
 futures = "0.3.17"
+serde = "1.0.130"
