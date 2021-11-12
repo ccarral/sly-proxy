@@ -1,6 +1,6 @@
 use crate::error::SlyError;
 use crate::proxy::TcpProxy;
-use std::net::SocketAddr;
+use crate::target::Target;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
