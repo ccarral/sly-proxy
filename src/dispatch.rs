@@ -1,6 +1,6 @@
 use crate::error::SlyError;
 use crate::proxy::TcpProxy;
-use std::net::SocketAddr;
+use crate::target::Target;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -26,10 +26,10 @@ impl DispatchService {
 
     pub fn with_targets<I>(mut self, targets: I) -> Self
     where
-        I: IntoIterator<Item = SocketAddr>,
+        I: IntoIterator<Item = Target>,
     {
         for t in targets {
-            let service = TcpProxy::new(t);
+            let service = TcpProxy::new(t.0);
             self.add_service(service);
         }
 
