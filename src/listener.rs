@@ -1,4 +1,4 @@
-use crate::error::FlyError;
+use crate::error::SlyError;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::TcpListener;
 use tokio::{net::TcpStream, sync::mpsc};
@@ -22,7 +22,7 @@ impl ListenerService {
     }
 
     /// Returns a future that runs the listener task
-    pub async fn run(self) -> Result<(), FlyError> {
+    pub async fn run(self) -> Result<(), SlyError> {
         let tx = self.tx;
         tracing::info!("Building listener service on port {}.", self.port);
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), self.port);

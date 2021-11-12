@@ -1,4 +1,4 @@
-use crate::error::FlyError;
+use crate::error::SlyError;
 use crate::proxy::TcpProxy;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
@@ -41,7 +41,7 @@ impl DispatchService {
     }
 
     /// Panics if length of service list == 0
-    pub async fn run(self) -> Result<(), FlyError> {
+    pub async fn run(self) -> Result<(), SlyError> {
         assert!(self.services.len() != 0, "Services list can't be 0");
 
         tracing::info!("Dispatch service started");

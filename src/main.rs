@@ -2,13 +2,14 @@ mod dispatch;
 mod error;
 mod listener;
 mod proxy;
+use crate::dispatch::DispatchService;
+use crate::error::SlyError;
+use crate::listener::ListenerService;
 use std::error::Error;
 use std::net::SocketAddr;
 use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
-
-use crate::error::FlyError;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Create a runtime
@@ -27,7 +28,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     runtime.block_on(async move {
         let listener_handle = {
-            let listener_service = listener::ListenerService::new(tx).on_port(8083);
+            let listener_service = ListenerService::new(tx).on_port(8083);
             listener_service.run()
         };
 
@@ -41,16 +42,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .collect::<Result<Vec<SocketAddr>, _>>()
                 .unwrap();
 
-            let dispatch_service = dispatch::DispatchService::new(rx).with_targets(targets);
+            let dispatch_service = DispatchService::new(rx).with_targets(targets);
             dispatch_service.run()
         };
 
         let (a, b) = tokio::join!(listener_task, dispatch_handle);
 
-        a.map_err(|e| FlyError::Generic(format!("Unable to join threads: {}", e)))??;
+        a.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
         b?;
 
-        Ok::<(), FlyError>(())
+        Ok::<(), SlyError>(())
     })?;
 
     Ok(())
