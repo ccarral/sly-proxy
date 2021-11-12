@@ -8,6 +8,8 @@ use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
 
+use crate::error::FlyError;
+
 fn main() -> Result<(), Box<dyn Error>> {
     // Create a runtime
 
@@ -29,10 +31,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             listener_service.run()
         };
 
+        // Needs to run on a tokio task so .accept() will be polled
         let listener_task = tokio::spawn(listener_handle);
 
         let dispatch_handle = {
-            let targets: Vec<SocketAddr> = ["127.0.0.1:8080"]
+            let targets: Vec<SocketAddr> = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
                 .into_iter()
                 .map(|addr| addr.parse::<SocketAddr>())
                 .collect::<Result<Vec<SocketAddr>, _>>()
@@ -42,20 +45,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             dispatch_service.run()
         };
 
-        // dispatch_service.await?;
-        // tokio::select! {
-        // _= dispatch_service.run() =>{
-        // },
-        // _ = listener_service.run() =>{
-        // }
-
         let (a, b) = tokio::join!(listener_task, dispatch_handle);
 
-        // a.unwrap();
-        b.unwrap();
+        a.map_err(|e| FlyError::Generic(format!("Unable to join threads: {}", e)))??;
+        b?;
 
-        // };
-    });
+        Ok::<(), FlyError>(())
+    })?;
 
     Ok(())
 }
