@@ -9,7 +9,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn ports(&mut self) -> &[u16] {
+    pub fn ports(&self) -> &[u16] {
         &self.listen_on
     }
 }

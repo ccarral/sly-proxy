@@ -1,11 +1,13 @@
 mod config;
 mod dispatch;
+mod display;
 mod error;
 mod listener;
 mod proxy;
 mod target;
 use crate::config::AppConfig;
 use crate::dispatch::DispatchService;
+use crate::display::display_app;
 use crate::error::SlyError;
 use crate::listener::ListenerService;
 use std::error::Error;
@@ -24,6 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Create a runtime
     let runtime = Builder::new_multi_thread().enable_all().build()?;
+
     let targets = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
         .into_iter()
         .map(|addr| {
@@ -49,7 +52,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub async fn app_builder(mut config: AppConfig) -> Result<(), SlyError> {
+pub async fn app_builder(config: AppConfig) -> Result<(), SlyError> {
+    display_app(&config);
     let (tx, rx) = mpsc::channel(100);
     let listener_handles = {
         config
@@ -69,11 +73,11 @@ pub async fn app_builder(mut config: AppConfig) -> Result<(), SlyError> {
         dispatch_service.run()
     };
 
-    let (a, b) = tokio::join!(listener_task, dispatch_handle);
+    let (listener_result, dispatch_result) = tokio::join!(listener_task, dispatch_handle);
 
     // Not very neat
-    a.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
-    b?;
+    listener_result.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
+    dispatch_result?;
 
     Ok(())
 }
