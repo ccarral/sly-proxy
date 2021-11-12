@@ -12,47 +12,47 @@ use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // Create a runtime
-
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
     tracing::info!("Initializing runtime");
+
+    // Create a runtime
     let runtime = Builder::new_multi_thread().enable_all().build()?;
 
-    let (tx, rx) = mpsc::channel(10);
+    let app = app_builder();
 
-    // Spawn service that listens on a multitude of ports and sends received streams through the tz
-    // channel
+    runtime.block_on(app)?;
 
-    runtime.block_on(async move {
-        let listener_handle = {
-            let listener_service = ListenerService::new(tx).on_port(8083);
-            listener_service.run()
-        };
+    Ok(())
+}
 
-        // Needs to run on a tokio task so .accept() will be polled
-        let listener_task = tokio::spawn(listener_handle);
+pub async fn app_builder() -> Result<(), SlyError> {
+    let (tx, rx) = mpsc::channel(100);
+    let listener_handle = {
+        let listener_service = ListenerService::new(tx).on_port(8083);
+        listener_service.run()
+    };
 
-        let dispatch_handle = {
-            let targets: Vec<SocketAddr> = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
-                .into_iter()
-                .map(|addr| addr.parse::<SocketAddr>())
-                .collect::<Result<Vec<SocketAddr>, _>>()
-                .unwrap();
+    // Needs to run on a tokio task so .accept() will be polled
+    let listener_task = Box::pin(tokio::spawn(listener_handle));
 
-            let dispatch_service = DispatchService::new(rx).with_targets(targets);
-            dispatch_service.run()
-        };
+    let dispatch_handle = Box::pin({
+        let targets: Vec<SocketAddr> = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
+            .into_iter()
+            .map(|addr| addr.parse::<SocketAddr>())
+            .collect::<Result<Vec<SocketAddr>, _>>()
+            .unwrap();
 
-        let (a, b) = tokio::join!(listener_task, dispatch_handle);
+        let dispatch_service = DispatchService::new(rx).with_targets(targets);
+        dispatch_service.run()
+    });
 
-        a.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
-        b?;
+    let (a, b) = tokio::join!(listener_task, dispatch_handle);
 
-        Ok::<(), SlyError>(())
-    })?;
+    a.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
+    b?;
 
     Ok(())
 }
