@@ -8,8 +8,7 @@ use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     // Create a runtime
 
     tracing_subscriber::fmt()
@@ -17,46 +16,46 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     tracing::info!("Initializing runtime");
-    // let runtime = Builder::new_current_thread().enable_all().build()?;
+    let runtime = Builder::new_multi_thread().enable_all().build()?;
 
     let (tx, rx) = mpsc::channel(10);
 
     // Spawn service that listens on a multitude of ports and sends received streams through the tz
     // channel
 
-    // runtime.block_on(async move {
-    let listener_handle = {
-        let listener_service = listener::ListenerService::new(tx).on_port(8083);
-        listener_service.run()
-    };
+    runtime.block_on(async move {
+        let listener_handle = {
+            let listener_service = listener::ListenerService::new(tx).on_port(8083);
+            listener_service.run()
+        };
 
-    let listener_task = tokio::spawn(listener_handle);
+        let listener_task = tokio::spawn(listener_handle);
 
-    let dispatch_handle = {
-        let targets: Vec<SocketAddr> = ["127.0.0.1:8080"]
-            .into_iter()
-            .map(|addr| addr.parse::<SocketAddr>())
-            .collect::<Result<Vec<SocketAddr>, _>>()
-            .unwrap();
+        let dispatch_handle = {
+            let targets: Vec<SocketAddr> = ["127.0.0.1:8080"]
+                .into_iter()
+                .map(|addr| addr.parse::<SocketAddr>())
+                .collect::<Result<Vec<SocketAddr>, _>>()
+                .unwrap();
 
-        let dispatch_service = dispatch::DispatchService::new(rx).with_targets(targets);
-        dispatch_service.run()
-    };
+            let dispatch_service = dispatch::DispatchService::new(rx).with_targets(targets);
+            dispatch_service.run()
+        };
 
-    // dispatch_service.await?;
-    // tokio::select! {
-    // _= dispatch_service.run() =>{
-    // },
-    // _ = listener_service.run() =>{
-    // }
+        // dispatch_service.await?;
+        // tokio::select! {
+        // _= dispatch_service.run() =>{
+        // },
+        // _ = listener_service.run() =>{
+        // }
 
-    let (a, b) = tokio::join!(listener_task, dispatch_handle);
+        let (a, b) = tokio::join!(listener_task, dispatch_handle);
 
-    // a.unwrap();
-    b.unwrap();
+        // a.unwrap();
+        b.unwrap();
 
-    // };
-    // });
+        // };
+    });
 
     Ok(())
 }
