@@ -3,13 +3,13 @@ use std::io;
 use tokio::sync::mpsc::error::SendError;
 
 #[derive(Debug)]
-pub enum FlyError<T> {
+pub enum FlyError {
     IoError(std::io::Error),
-    SendError(SendError<T>),
+    SendError(String),
     Generic(String),
 }
 
-impl<T> fmt::Display for FlyError<T> {
+impl fmt::Display for FlyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FlyError::IoError(e) => write!(f, "Unexpected I/O error: {}", e),
@@ -19,15 +19,16 @@ impl<T> fmt::Display for FlyError<T> {
     }
 }
 
-impl<T: fmt::Debug> std::error::Error for FlyError<T> {}
+impl std::error::Error for FlyError {}
 
-impl<T> From<SendError<T>> for FlyError<T> {
+impl<T> From<SendError<T>> for FlyError {
     fn from(err: SendError<T>) -> Self {
-        FlyError::SendError(err)
+        let str = err.to_string();
+        FlyError::SendError(str)
     }
 }
 
-impl<T> From<io::Error> for FlyError<T> {
+impl From<io::Error> for FlyError {
     fn from(inner: io::Error) -> Self {
         FlyError::IoError(inner)
     }
