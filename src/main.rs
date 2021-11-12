@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Create a runtime
     let runtime = Builder::new_multi_thread().enable_all().build()?;
 
-    let ports = [8083];
+    let ports = [8083, 8084];
 
     let targets1 = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
         .into_iter()
