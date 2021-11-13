@@ -1,14 +1,16 @@
+mod config;
 mod dispatch;
+mod display;
 mod error;
 mod listener;
 mod proxy;
 mod target;
+use crate::config::{get_default_config, AppConfig};
 use crate::dispatch::DispatchService;
+use crate::display::display_app;
 use crate::error::SlyError;
 use crate::listener::ListenerService;
 use std::error::Error;
-use std::net::SocketAddr;
-use target::Target;
 use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
@@ -23,16 +25,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Create a runtime
     let runtime = Builder::new_multi_thread().enable_all().build()?;
 
-    let ports = [8083, 8084];
+    let config = get_default_config()?;
 
-    let targets1 = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
-        .into_iter()
-        .map(|addr| {
-            let addr = addr.parse::<SocketAddr>().unwrap();
-            Target(addr)
-        });
-
-    let app = app_builder(targets1, ports);
+    let app = app_builder(config);
 
     runtime.block_on(async move {
         let (a,) = tokio::join!(app);
@@ -43,16 +38,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub async fn app_builder<T, P>(targets: T, ports: P) -> Result<(), SlyError>
-where
-    T: IntoIterator<Item = Target>,
-    P: IntoIterator<Item = u16>,
-{
+pub async fn app_builder(config: AppConfig) -> Result<(), SlyError> {
+    display_app(&config);
     let (tx, rx) = mpsc::channel(100);
     let listener_handles = {
-        ports
-            .into_iter()
-            .map(|port| ListenerService::new(tx.clone()).on_port(port))
+        config
+            .ports()
+            .iter()
+            .map(|port| ListenerService::new(tx.clone()).on_port(*port))
             .map(|listener_svc| tokio::spawn(listener_svc.run()))
     };
 
@@ -62,15 +55,15 @@ where
     let listener_task = tokio::spawn(listeners_futures);
 
     let dispatch_handle = {
-        let dispatch_service = DispatchService::new(rx).with_targets(targets);
+        let dispatch_service = DispatchService::new(rx).with_targets(config.target);
         dispatch_service.run()
     };
 
-    let (a, b) = tokio::join!(listener_task, dispatch_handle);
+    let (listener_result, dispatch_result) = tokio::join!(listener_task, dispatch_handle);
 
     // Not very neat
-    a.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
-    b?;
+    listener_result.map_err(|e| SlyError::Generic(format!("Unable to join threads: {}", e)))??;
+    dispatch_result?;
 
     Ok(())
 }
