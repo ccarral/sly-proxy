@@ -5,14 +5,12 @@ mod error;
 mod listener;
 mod proxy;
 mod target;
-use crate::config::AppConfig;
+use crate::config::{get_default_config, AppConfig};
 use crate::dispatch::DispatchService;
 use crate::display::display_app;
 use crate::error::SlyError;
 use crate::listener::ListenerService;
 use std::error::Error;
-use std::net::SocketAddr;
-use target::Target;
 use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
@@ -27,19 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Create a runtime
     let runtime = Builder::new_multi_thread().enable_all().build()?;
 
-    let targets = ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]
-        .into_iter()
-        .map(|addr| {
-            let addr = addr.parse::<SocketAddr>().unwrap();
-            Target::from_sock_addr(&addr)
-        })
-        .collect::<Vec<Target>>();
-
-    let config = AppConfig {
-        listen_on: vec![8083, 8084],
-        name: "pepe-app".into(),
-        targets,
-    };
+    let config = get_default_config()?;
 
     let app = app_builder(config);
 
@@ -69,7 +55,7 @@ pub async fn app_builder(config: AppConfig) -> Result<(), SlyError> {
     let listener_task = tokio::spawn(listeners_futures);
 
     let dispatch_handle = {
-        let dispatch_service = DispatchService::new(rx).with_targets(config.targets);
+        let dispatch_service = DispatchService::new(rx).with_targets(config.target);
         dispatch_service.run()
     };
 

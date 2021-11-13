@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Target {
     ip: IpAddr,
     port: u16,
