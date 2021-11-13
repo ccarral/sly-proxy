@@ -8,9 +8,10 @@ edition = "2021"
 [dependencies]
 tokio = {version="1.13.0", features = ["full"]}
 tokio-stream = "0.1.8"
-tower ={ version="0.4.10", features=["balance", "discover","util","load"] }
+tower ={ version="0.4.10", features=["balance", "discover","util","load", "retry"] }
 tracing = "0.1.29"
 tracing-subscriber = { version = "0.3.1", features = ["env-filter"] }
 futures = "0.3.17"
 serde = { version = "1.0.130", features=["derive"] }
 toml = "0.5.8"
+futures-util = "0.3.17"
