@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .into_iter()
         .map(|addr| {
             let addr = addr.parse::<SocketAddr>().unwrap();
-            Target(addr)
+            Target::from_sock_addr(&addr)
         })
         .collect::<Vec<Target>>();
 

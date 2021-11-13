@@ -8,6 +8,7 @@ pub enum SlyError {
     IoError(std::io::Error),
     JoinError(JoinError),
     SendError(String),
+    Config(String),
     Generic(String),
 }
 
@@ -18,6 +19,7 @@ impl fmt::Display for SlyError {
             SlyError::SendError(e) => write!(f, "Channel closed unexpectedly: {}", e),
             SlyError::JoinError(e) => write!(f, "Error while joining: {}", e),
             SlyError::Generic(e) => write!(f, "Error encountered: {}", e),
+            SlyError::Config(e) => write!(f, "Unable to parse configuration: {}", e),
         }
     }
 }

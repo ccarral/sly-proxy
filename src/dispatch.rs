@@ -29,7 +29,7 @@ impl DispatchService {
         I: IntoIterator<Item = Target>,
     {
         for t in targets {
-            let service = TcpProxy::new(t.0);
+            let service = TcpProxy::new(t.sock_addr());
             self.add_service(service);
         }
 
