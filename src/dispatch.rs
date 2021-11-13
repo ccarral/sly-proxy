@@ -99,17 +99,17 @@ impl DispatchService {
             // Marks a service as ready to receive new requests once it has completed its future
             .map(|s| PendingRequests::new(s, CompleteOnResponse::default()));
 
-        let mut service_list = ServiceList::new(services_with_load);
+        let service_list = ServiceList::new(services_with_load);
 
-        let mut balance = Balance::new(service_list);
+        let balance = Balance::new(service_list);
         tracing::trace!("load balancer initialized");
 
         // Wraps the Balance service in a Retry service that takes a failed request (for whatever
         // reason) and retries it
-        let retry = Retry::new(DispatchPolicy::with_attempts_limit(3), balance);
+        // let retry = Retry::new(DispatchPolicy::with_attempts_limit(3), balance);
 
         let stream_rx = ReceiverStream::new(self.rx);
-        let mut responses = retry.call_all(stream_rx).unordered();
+        let mut responses = balance.call_all(stream_rx).unordered();
 
         while let Some(_) = responses.next().await {
             tracing::trace!("a connection finished");
