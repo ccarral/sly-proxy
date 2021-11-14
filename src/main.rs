@@ -2,6 +2,7 @@ mod config;
 mod dispatch;
 mod display;
 mod error;
+mod fallback;
 mod listener;
 mod proxy;
 mod target;
