@@ -5,7 +5,6 @@ mod error;
 mod fallback;
 mod listener;
 mod proxy;
-mod stream;
 mod target;
 use crate::config::{get_default_config, AppConfig};
 use crate::dispatch::DispatchService;

@@ -24,13 +24,13 @@ impl ListenerService {
     /// Returns a future that runs the listener task
     pub async fn run(self) -> Result<(), SlyError> {
         let tx = self.tx;
-        tracing::info!("Building listener service on port {}.", self.port);
+        tracing::info!("building listener service on port {}.", self.port);
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), self.port);
         let listener = TcpListener::bind(addr).await.unwrap();
         loop {
             match listener.accept().await {
                 Ok((stream, addr)) => {
-                    tracing::info!("Connection accepted from {:?}", &addr);
+                    tracing::info!("connection accepted from {:?}", &addr);
                     tx.send(stream).await?;
                     Ok(())
                 }
