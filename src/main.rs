@@ -1,4 +1,5 @@
 mod config;
+mod discover;
 mod dispatch;
 mod display;
 mod error;

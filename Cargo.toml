@@ -16,3 +16,4 @@ serde = { version = "1.0.130", features=["derive"] }
 toml = "0.5.8"
 bytes = "1.1.0"
 futures-util = "0.3.17"
+pin-project-lite = "0.2.7"
