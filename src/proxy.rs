@@ -30,6 +30,22 @@ impl Service<(TcpStream, TcpStream)> for TcpProxy {
 
     fn call(&mut self, (mut in_stream, mut out_stream): (TcpStream, TcpStream)) -> Self::Future {
         let fut = Box::pin(async move {
+            // Set outbound socket options
+            let ttl = in_stream.ttl().map_err(|e| ProxyError::Inbound(e))?;
+            out_stream
+                .set_ttl(ttl)
+                .map_err(|e| ProxyError::Outbound(e))?;
+
+            let linger = in_stream.linger().map_err(|e| ProxyError::Inbound(e))?;
+            out_stream
+                .set_linger(linger)
+                .map_err(|e| ProxyError::Outbound(e))?;
+
+            let nodelay = in_stream.nodelay().map_err(|e| ProxyError::Inbound(e))?;
+            out_stream
+                .set_nodelay(nodelay)
+                .map_err(|e| ProxyError::Outbound(e))?;
+
             let (mut read_in, mut write_in) = in_stream.split();
             let (mut read_out, mut write_out) = out_stream.split();
 
