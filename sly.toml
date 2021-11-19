@@ -1,0 +1,15 @@
+name = "caca-app"
+
+listen_on = [8080,8081]
+
+[[target]]
+ip = "127.0.0.1"
+port = 23 
+
+# [[target]]
+# ip = "127.0.0.1"
+# port = 8081
+
+# [[target]]
+# ip = "127.0.0.1"
+# port = 8082
