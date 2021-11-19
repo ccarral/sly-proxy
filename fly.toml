@@ -1,0 +1,23 @@
+app = "sly-proxy"
+
+kill_signal = "SIGTERM"
+kill_timeout = 120
+
+
+[experimental]
+  cmd = "./target/release/sly-proxy"
+
+[env]
+  LOG_LEVEL = "info"
+
+[[services]]
+internal_port = 8080
+protocol = "tcp" 
+
+[[services.ports]]
+handlers = ["tcp"]
+port = 80
+
+[[services.ports]]
+handlers = ["tcp"]
+port = 5000

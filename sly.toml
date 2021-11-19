@@ -1,14 +1,14 @@
 name = "caca-app"
 
-listen_on = [8083,8084]
+listen_on = [8080,8081]
 
 [[target]]
-ip = "127.0.0.1"
+ip = "255.255.255.255"
 port = 8080
 
-[[target]]
-ip = "127.0.0.1"
-port = 8081
+# [[target]]
+# ip = "127.0.0.1"
+# port = 8081
 
 # [[target]]
 # ip = "127.0.0.1"

@@ -5,4 +5,5 @@ COPY ./ ./
 
 RUN cargo build --release
 
-CMD ["./target/release/sly-proxy"]
+EXPOSE 8080
+EXPOSE 8081
